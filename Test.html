@@ -467,12 +467,10 @@
       return R * c;
     }
 
-    // ฟังก์ชันสำหรับ JSONP
+    // ✅ ฟังก์ชัน JSONP (เพิ่มตรงนี้)
     function jsonp(url, callbackName, callback) {
-      // สร้าง callback function ชั่วคราว
       window[callbackName] = function(data) {
         callback(data);
-        // ลบ script และ callback หลังจากใช้งาน
         setTimeout(() => {
           delete window[callbackName];
           const script = document.querySelector(`script[src*="${callbackName}"]`);
@@ -480,13 +478,12 @@
         }, 100);
       };
       
-      // สร้าง script tag
       const script = document.createElement('script');
       script.src = url + '&callback=' + callbackName;
       document.head.appendChild(script);
     }
 
-    // ค้นหาพนักงาน (ใช้ JSONP)
+    // ✅ ค้นหาพนักงาน (ใช้ JSONP)
     employeeId.addEventListener('input', function() {
       const id = this.value.trim();
       
@@ -510,7 +507,7 @@
       }
     });
 
-    // ถ่ายภาพและบันทึก (ใช้ JSONP)
+    // ✅ ถ่ายภาพและบันทึก (ใช้ JSONP)
     window.capture = function(status) {
       const empId = employeeId.value.trim();
       
@@ -531,18 +528,15 @@
       
       showStatus('📷 กำลังถ่ายภาพ...', 'warning');
       
-      // ถ่ายภาพ
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       canvas.getContext('2d').drawImage(video, 0, 0);
       
-      // แปลงเป็น Base64
       const imageData = canvas.toDataURL('image/jpeg', 0.7);
       const base64Data = encodeURIComponent(imageData);
       
       showStatus('⏳ กำลังบันทึก...', 'warning');
       
-      // ส่งข้อมูลแบบ JSONP
       const callbackName = 'save_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
       const url = `${SCRIPT_URL}?action=saveAttendance&employee_id=${empId}&status=${status}&lat=${currentPosition.lat}&lng=${currentPosition.lng}&image=${base64Data}`;
       
