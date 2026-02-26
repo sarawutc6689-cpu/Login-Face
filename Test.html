@@ -63,7 +63,7 @@
       font-size: 0.95rem;
     }
 
-    input, select {
+    input {
       width: 100%;
       padding: 12px 15px;
       border: 2px solid #e2e8f0;
@@ -72,7 +72,7 @@
       transition: border-color 0.3s;
     }
 
-    input:focus, select:focus {
+    input:focus {
       outline: none;
       border-color: #667eea;
     }
@@ -220,20 +220,6 @@
       color: #718096;
       font-size: 0.9rem;
     }
-
-    .badge {
-      background: #48bb78;
-      color: white;
-      padding: 3px 8px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      display: inline-block;
-      margin-left: 5px;
-    }
-
-    .badge-warning {
-      background: #ed8936;
-    }
   </style>
 </head>
 <body>
@@ -246,12 +232,12 @@
     <div class="content">
       <!-- แจ้งเตือน Github Pages -->
       <div style="background: #4299e1; color: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-size: 0.9rem;">
-        🌐 กำลังรันบน Github Pages
+        🌐 ระบบลงเวลาทำงาน (Github Pages)
       </div>
 
       <div class="form-group">
         <label>👤 รหัสพนักงาน</label>
-        <input type="text" id="employeeId" placeholder="" autocomplete="off">
+        <input type="text" id="employeeId" placeholder="เช่น EMP001" autocomplete="off">
         <div id="employeeName" style="margin-top: 5px; font-size: 0.9rem; color: #718096;"></div>
       </div>
 
@@ -283,17 +269,6 @@
       </div>
 
       <div id="status"></div>
-      
-      <div style="margin-top: 15px; padding: 10px; background: #f7fafc; border-radius: 8px; font-size: 0.85rem;">
-        <details>
-          <summary style="cursor: pointer; color: #4a5568;">⚙️ ตั้งค่า (สำหรับผู้ดูแล)</summary>
-          <div style="margin-top: 10px;">
-            <label>Google Apps Script URL</label>
-            <input type="text" id="scriptUrl" value="https://script.google.com/macros/s/AKfycbxbDqC9kClkK1yV5a373v5kFuuBI0VALGUpusGt4CQhjCoo2UAJ_heAgec9188wvPNUSw/exec" style="font-size: 0.85rem;">
-            <p style="color: #718096; margin-top: 5px;">⚠️ ต้อง deploy เป็น Web App และตั้งค่า "Execute as: Me" และ "Who has access: Anyone"</p>
-          </div>
-        </details>
-      </div>
     </div>
 
     <div class="footer">
@@ -312,7 +287,9 @@
     let cameraStream = null;
     let isCameraReady = false;
     let currentPosition = null;
-    let employeeData = {};
+
+    // URL ของ Google Apps Script (คงที่)
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwp-Z98V_bMxBz_mK6inPwCzwswM6oKFK8uOIp0DGWejCsdVPuxb24R7Zx9N6so8ldpkQ/exec';
 
     // ดึง elements
     const video = document.getElementById('video');
@@ -329,7 +306,6 @@
     const currentTimeSpan = document.getElementById('currentTime');
     const employeeId = document.getElementById('employeeId');
     const employeeName = document.getElementById('employeeName');
-    const scriptUrl = document.getElementById('scriptUrl');
 
     // อัปเดตเวลาปัจจุบัน
     function updateTime() {
@@ -526,10 +502,7 @@
       showStatus('⏳ กำลังส่งข้อมูล...', 'warning');
       
       // ส่งข้อมูลไปยัง Google Apps Script
-      const url = scriptUrl.value.trim();
-      
-      // ใช้ fetch แบบ no-cors
-      fetch(url, {
+      fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
@@ -538,8 +511,7 @@
         body: JSON.stringify(attendanceData)
       })
       .then(() => {
-        // เนื่องจากเป็น no-cors เราจะไม่ได้รับการตอบกลับ
-        showStatus('✅ ส่งข้อมูลสำเร็จ (รอการยืนยัน)', 'success');
+        showStatus('✅ บันทึกข้อมูลสำเร็จ', 'success');
         
         // เคลียร์ข้อมูล
         setTimeout(() => {
@@ -551,23 +523,8 @@
       })
       .catch(err => {
         console.error(err);
-        showStatus('❌ ส่งข้อมูลไม่สำเร็จ', 'error');
+        showStatus('❌ บันทึกข้อมูลไม่สำเร็จ', 'error');
       });
-      
-      // ลองใช้วิธี JSONP เผื่อไว้
-      try {
-        const formData = new FormData();
-        formData.append('employee_id', empId);
-        formData.append('status', status);
-        formData.append('latitude', currentPosition.lat);
-        formData.append('longitude', currentPosition.lng);
-        formData.append('image', base64Data);
-        
-        fetch(url, {
-          method: 'POST',
-          body: formData
-        }).catch(e => console.log('FormData error:', e));
-      } catch (e) {}
     };
 
     // แสดงสถานะ
@@ -579,26 +536,25 @@
       if (type === 'warning') statusDiv.classList.add('status-warning');
     }
 
-    // ค้นหาพนักงาน (ถ้ามี API)
+    // แสดงชื่อพนักงาน (ตัวอย่าง)
     employeeId.addEventListener('input', function() {
       const id = this.value.trim();
       if (id.length >= 3) {
-        employeeName.innerText = '🔍 กำลังค้นหา...';
+        // ถ้ามี API จริงๆ ก็เรียกตรงนี้
+        employeeName.innerText = '👤 กำลังตรวจสอบ...';
         
-        // ถ้ามี API สำหรับค้นหาพนักงาน
-        // fetch(`https://your-api.com/employees/${id}`)
-        //   .then(res => res.json())
-        //   .then(data => {
-        //     employeeName.innerText = `👤 ${data.name}`;
-        //   })
-        //   .catch(() => {
-        //     employeeName.innerText = '';
-        //   });
-        
-        // กรณียังไม่มี API ให้แสดงตัวอย่าง
+        // ตัวอย่าง (ลบออกเมื่อมี API จริง)
         setTimeout(() => {
-          employeeName.innerText = '👤 พนักงานตัวอย่าง (โหมดทดสอบ)';
-          employeeName.style.color = '#718096';
+          if (id === 'EMP001') {
+            employeeName.innerText = '👤 สมชาย ใจดี (ฝ่ายขาย)';
+            employeeName.style.color = '#2d3748';
+          } else if (id === 'EMP002') {
+            employeeName.innerText = '👤 สมหญิง รักงาน (ฝ่ายการตลาด)';
+            employeeName.style.color = '#2d3748';
+          } else {
+            employeeName.innerText = '⚠️ ไม่พบรหัสพนักงาน';
+            employeeName.style.color = '#e53e3e';
+          }
         }, 500);
       } else {
         employeeName.innerText = '';
