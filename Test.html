@@ -509,49 +509,67 @@
 
     // ✅ ถ่ายภาพและบันทึก (ใช้ JSONP)
     window.capture = function(status) {
-      const empId = employeeId.value.trim();
-      
-      if (!empId) {
-        showStatus('❌ กรุณากรอกรหัสพนักงาน', 'error');
-        return;
+  const empId = employeeId.value.trim();
+  
+  if (!empId) {
+    showStatus('❌ กรุณากรอกรหัสพนักงาน', 'error');
+    return;
+  }
+  
+  if (!isCameraReady) {
+    showStatus('❌ กรุณาเปิดกล้องก่อน', 'error');
+    return;
+  }
+  
+  if (!currentPosition) {
+    showStatus('❌ กรุณาค้นหาตำแหน่งก่อน', 'error');
+    return;
+  }
+  
+  showStatus('📷 กำลังถ่ายภาพ...', 'warning');
+  
+  // ถ่ายภาพ
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  
+  // แปลงเป็น Blob (ไฟล์รูปภาพ)
+  canvas.toBlob(function(blob) {
+    showStatus('⏳ กำลังบันทึก...', 'warning');
+    
+    // สร้าง FormData
+    const formData = new FormData();
+    formData.append('action', 'saveAttendance');
+    formData.append('employee_id', empId);
+    formData.append('status', status);
+    formData.append('lat', currentPosition.lat);
+    formData.append('lng', currentPosition.lng);
+    formData.append('image', blob, 'photo.jpg');
+    
+    // ส่งข้อมูลด้วย fetch
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.result === 'success') {
+        showStatus('✅ บันทึกสำเร็จ', 'success');
+        employeeId.value = '';
+        employeeName.innerText = '';
+        currentPosition = null;
+        locationBox.style.display = 'none';
+      } else {
+        showStatus('❌ ' + data.message, 'error');
       }
-      
-      if (!isCameraReady) {
-        showStatus('❌ กรุณาเปิดกล้องก่อน', 'error');
-        return;
-      }
-      
-      if (!currentPosition) {
-        showStatus('❌ กรุณาค้นหาตำแหน่งก่อน', 'error');
-        return;
-      }
-      
-      showStatus('📷 กำลังถ่ายภาพ...', 'warning');
-      
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
-      
-      const imageData = canvas.toDataURL('image/jpeg', 0.7);
-      const base64Data = encodeURIComponent(imageData);
-      
-      showStatus('⏳ กำลังบันทึก...', 'warning');
-      
-      const callbackName = 'save_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-      const url = `${SCRIPT_URL}?action=saveAttendance&employee_id=${empId}&status=${status}&lat=${currentPosition.lat}&lng=${currentPosition.lng}&image=${base64Data}`;
-      
-      jsonp(url, callbackName, function(data) {
-        if (data && data.result === 'success') {
-          showStatus('✅ บันทึกสำเร็จ', 'success');
-          employeeId.value = '';
-          employeeName.innerText = '';
-          currentPosition = null;
-          locationBox.style.display = 'none';
-        } else {
-          showStatus('❌ ' + (data ? data.message : 'บันทึกไม่สำเร็จ'), 'error');
-        }
-      });
-    };
+    })
+    .catch(err => {
+      console.error('Error:', err);
+      showStatus('❌ ไม่สามารถเชื่อมต่อ', 'error');
+    });
+    
+  }, 'image/jpeg', 0.7); // คุณภาพ 70%
+};
 
     // แสดงสถานะ
     function showStatus(message, type) {
