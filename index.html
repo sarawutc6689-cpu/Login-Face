@@ -4,6 +4,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ระบบลงเวลา</title>
 
+  <!-- Leaflet / OpenStreetMap -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <style>
     body {
       font-family: Arial;
@@ -20,15 +24,21 @@
       box-shadow: 0 10px 25px rgba(0,0,0,0.1);
     }
 
-    h2 { text-align:center; }
+    h2 { text-align:center; margin-bottom:10px; }
 
     input, select {
-      width: 95%;
+      width: 100%;
       padding: 12px;
       margin-bottom: 10px;
       font-size: 16px;
       border-radius: 10px;
       border: 1px solid #ddd;
+    }
+
+    #map {
+      height: 220px;
+      border-radius: 12px;
+      margin: 10px 0;
     }
 
     video {
@@ -77,6 +87,8 @@
       <option value="environment">📸 กล้องหลัง</option>
     </select>
 
+    <div id="map"></div>
+
     <video id="video" autoplay playsinline></video>
     <canvas id="canvas" style="display:none;"></canvas>
 
@@ -89,27 +101,57 @@
   </div>
 
 <script>
-/* ====== CONFIG ====== */
+/* ===== CONFIG ===== */
 
 const YOUR_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbytBI7A0QhKEUQ43gwrMs0yl6nZcdhdq5nrwoQxWHVgIZ3XWs1Z6y2amtWUERbh28SE6w/exec";
 
 const OFFICE_LAT = 14.57736759075333;
 const OFFICE_LNG = 100.79379214129247;
-const ALLOW_RADIUS = 100; // เมตร
+const ALLOW_RADIUS = 100;
 
-/* ====== ELEMENTS ====== */
+/* ===== ELEMENTS ===== */
 
 let stream;
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const statusDiv = document.getElementById("status");
 
-/* ====== CAMERA ====== */
+/* ===== MAP ===== */
+
+let map, officeMarker, userMarker, radiusCircle;
+
+function initMap() {
+  map = L.map('map').setView([OFFICE_LAT, OFFICE_LNG], 16);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  officeMarker = L.marker([OFFICE_LAT, OFFICE_LNG])
+    .addTo(map)
+    .bindPopup("🏢 Office");
+
+  radiusCircle = L.circle([OFFICE_LAT, OFFICE_LNG], {
+    radius: ALLOW_RADIUS,
+    color: 'red',
+    fillOpacity: 0.1
+  }).addTo(map);
+}
+
+function updateUserLocation(lat, lng) {
+  if (userMarker) {
+    userMarker.setLatLng([lat, lng]);
+  } else {
+    userMarker = L.marker([lat, lng])
+      .addTo(map)
+      .bindPopup("📍 คุณอยู่ที่นี่");
+  }
+}
+
+/* ===== CAMERA ===== */
 
 async function initCamera() {
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop());
-  }
+  if (stream) stream.getTracks().forEach(t => t.stop());
 
   const facingMode = document.getElementById("cameraSelect").value;
 
@@ -126,7 +168,7 @@ async function initCamera() {
 document.getElementById("cameraSelect")
   .addEventListener("change", initCamera);
 
-/* ====== DISTANCE ====== */
+/* ===== DISTANCE ===== */
 
 function getDistance(lat1, lng1, lat2, lng2) {
   const R = 6371e3;
@@ -135,14 +177,14 @@ function getDistance(lat1, lng1, lat2, lng2) {
   const dp = (lat2 - lat1) * Math.PI / 180;
   const dl = (lng2 - lng1) * Math.PI / 180;
 
-  const a = Math.sin(dp/2) ** 2 +
-            Math.cos(p1) * Math.cos(p2) *
-            Math.sin(dl/2) ** 2;
+  const a = Math.sin(dp/2)**2 +
+            Math.cos(p1)*Math.cos(p2)*
+            Math.sin(dl/2)**2;
 
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
 }
 
-/* ====== CAPTURE ====== */
+/* ===== CAPTURE ===== */
 
 function capture(type) {
 
@@ -163,10 +205,12 @@ function capture(type) {
     const lat = pos.coords.latitude;
     const lng = pos.coords.longitude;
 
+    updateUserLocation(lat, lng);
+
     const distance = getDistance(lat, lng, OFFICE_LAT, OFFICE_LNG);
 
     if (distance > ALLOW_RADIUS) {
-      statusDiv.innerText = "❌ อยู่นอกพื้นที่ (" + distance.toFixed(1) + " m)";
+      statusDiv.innerText = `❌ อยู่นอกพื้นที่ (${distance.toFixed(1)} m)`;
       statusDiv.style.color = "red";
       return;
     }
@@ -208,8 +252,9 @@ function capture(type) {
   }, { enableHighAccuracy: true });
 }
 
-/* ====== START ====== */
+/* ===== START ===== */
 
+initMap();      // ⭐ สำคัญ (ของเดิมลืมเรียก)
 initCamera();
 </script>
 </body>
