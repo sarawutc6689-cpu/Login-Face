@@ -4,7 +4,7 @@ export default {
     const url = new URL(request.url);
     const action = url.searchParams.get("action");
 
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxCC-kieyXgoSGYKxnhJY2bgsrbvbxfM3KB1SPPSCf9jLeOGL7lurHwKAAzy-iv3iZrCA/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzFQUKDEcIu1vB1yPrzm3N0sgDJGfFK7hJLT-LlRtRcmSGmLWqxmU18-dTGw1KDB4rm2Q/exec";
 
     const response = await fetch(GAS_URL + "?action=" + action);
 
