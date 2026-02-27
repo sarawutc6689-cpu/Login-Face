@@ -1,0 +1,20 @@
+export default {
+  async fetch(request) {
+
+    const url = new URL(request.url);
+    const action = url.searchParams.get("action");
+
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxCC-kieyXgoSGYKxnhJY2bgsrbvbxfM3KB1SPPSCf9jLeOGL7lurHwKAAzy-iv3iZrCA/exec";
+
+    const response = await fetch(GAS_URL + "?action=" + action);
+
+    const data = await response.text();
+
+    return new Response(data, {
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      }
+    });
+  }
+}
