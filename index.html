@@ -150,25 +150,22 @@ async function initCamera() {
 
   const facingMode = document.getElementById("cameraSelect").value;
 
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode }
-    });
-    video.srcObject = stream;
-  } catch (err) {
-    alert("เปิดกล้องไม่ได้: " + err.message);
-  }
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode }
+  });
+
+  video.srcObject = stream;
 }
 
 document.getElementById("cameraSelect")
   .addEventListener("change", initCamera);
 
-/* ===== LOAD AI MODELS ===== */
+/* ===== LOAD MODELS ===== */
 
 async function loadModels() {
   await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
   await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
-  console.log("AI Models Loaded");
+  console.log("Models Loaded");
 }
 
 /* ===== BLINK DETECTION ===== */
@@ -188,16 +185,16 @@ async function detectBlink() {
     return Math.hypot(a.x - b.x, a.y - b.y);
   }
 
-  function eyeAspectRatio(eye) {
+  function ear(eye) {
     const A = distance(eye[1], eye[5]);
     const B = distance(eye[2], eye[4]);
     const C = distance(eye[0], eye[3]);
     return (A + B) / (2.0 * C);
   }
 
-  const ear = (eyeAspectRatio(leftEye) + eyeAspectRatio(rightEye)) / 2;
+  const eyeRatio = (ear(leftEye) + ear(rightEye)) / 2;
 
-  if (ear < 0.20) {
+  if (eyeRatio < 0.20) {
     blinkDetected = true;
     statusDiv.innerText = "✅ ตรวจพบการกระพริบตา";
     statusDiv.style.color = "green";
@@ -206,34 +203,27 @@ async function detectBlink() {
 
 /* ===== CAPTURE ===== */
 
-async function capture(type) {
+function capture(type) {
 
   if (!blinkDetected) {
     alert("กรุณากระพริบตาก่อนถ่ายภาพ");
     return;
   }
 
-  // (ส่วน capture เดิมของคุณใส่ต่อจากตรงนี้ได้เลย)
+  alert("ถ่ายภาพได้ (ผ่าน liveness)");
 }
 
 /* ===== START ===== */
 
 window.addEventListener("load", async () => {
 
-  // รอให้ faceapi พร้อมจริง ๆ
   while (typeof faceapi === "undefined") {
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(r => setTimeout(r, 100));
   }
-
-  console.log("faceapi ready");
 
   await loadModels();
   await initCamera();
 
-  setInterval(detectBlink, 500);
-});
-
-  // ตรวจจับทุก 500ms
   setInterval(detectBlink, 500);
 });
 
