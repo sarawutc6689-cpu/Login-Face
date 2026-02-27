@@ -210,7 +210,41 @@ function capture(type) {
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    canvas.getContext("2d").drawImage(video, 0, 0);
+    const ctx = canvas.getContext("2d");
+
+// วาดภาพ
+ctx.drawImage(video, 0, 0);
+
+// เตรียมข้อมูลเวลา
+const now = new Date();
+const dateStr = now.toLocaleDateString();
+const timeStr = now.toLocaleTimeString();
+
+// ตั้งค่าฟอนต์
+ctx.font = "20px Arial";
+ctx.fillStyle = "white";
+ctx.strokeStyle = "black";
+ctx.lineWidth = 3;
+
+// ข้อความที่จะแสดง
+const lines = [
+  empId,
+  `${dateStr} ${timeStr}`,
+  `Lat: ${lat.toFixed(5)}`,
+  `Lng: ${lng.toFixed(5)}`
+];
+
+// วาดพื้นหลังทึบเล็กน้อย (อ่านง่าย)
+ctx.fillStyle = "rgba(0,0,0,0.5)";
+ctx.fillRect(10, canvas.height - 110, 350, 100);
+
+// เขียนตัวหนังสือ
+ctx.fillStyle = "white";
+
+lines.forEach((text, i) => {
+  ctx.strokeText(text, 20, canvas.height - 80 + (i * 25));
+  ctx.fillText(text, 20, canvas.height - 80 + (i * 25));
+});
 
     const base64 = canvas.toDataURL("image/jpeg", 0.8).split(',')[1];
 
