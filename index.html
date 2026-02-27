@@ -219,8 +219,19 @@ async function capture(type) {
 /* ===== START ===== */
 
 window.addEventListener("load", async () => {
+
+  // รอให้ faceapi พร้อมจริง ๆ
+  while (typeof faceapi === "undefined") {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  console.log("faceapi ready");
+
   await loadModels();
   await initCamera();
+
+  setInterval(detectBlink, 500);
+});
 
   // ตรวจจับทุก 500ms
   setInterval(detectBlink, 500);
