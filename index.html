@@ -95,6 +95,9 @@
       text-decoration: underline;
     }
   </style>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+  
 </head>
 
 <body>
@@ -125,28 +128,25 @@
       <p>สำหรับใช้ภายในองค์กรเท่านั้น</p>
     </footer>
 
-<script>
-/* ====== CONFIG ====== */
+  <script>
 
 const YOUR_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxCC-kieyXgoSGYKxnhJY2bgsrbvbxfM3KB1SPPSCf9jLeOGL7lurHwKAAzy-iv3iZrCA/exec";
 
 const OFFICE_LAT = 14.57736759075333;
 const OFFICE_LNG = 100.79379214129247;
-const ALLOW_RADIUS = 100; // เมตร
-
-/* ====== ELEMENTS ====== */
+const ALLOW_RADIUS = 100;
 
 let stream;
+let blinkDetected = false;
+
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const statusDiv = document.getElementById("status");
 
-/* ====== CAMERA ====== */
+/* ===== CAMERA ===== */
 
 async function initCamera() {
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop());
-  }
+  if (stream) stream.getTracks().forEach(track => track.stop());
 
   const facingMode = document.getElementById("cameraSelect").value;
 
@@ -156,156 +156,77 @@ async function initCamera() {
     });
     video.srcObject = stream;
   } catch (err) {
-    alert("❌ เปิดกล้องไม่ได้: " + err.message);
+    alert("เปิดกล้องไม่ได้: " + err.message);
   }
 }
 
 document.getElementById("cameraSelect")
   .addEventListener("change", initCamera);
 
-/* ====== DISTANCE ====== */
+/* ===== LOAD AI MODELS ===== */
 
-function getDistance(lat1, lng1, lat2, lng2) {
-  const R = 6371e3;
-  const p1 = lat1 * Math.PI / 180;
-  const p2 = lat2 * Math.PI / 180;
-  const dp = (lat2 - lat1) * Math.PI / 180;
-  const dl = (lng2 - lng1) * Math.PI / 180;
-
-  const a = Math.sin(dp/2) ** 2 +
-            Math.cos(p1) * Math.cos(p2) *
-            Math.sin(dl/2) ** 2;
-
-  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+async function loadModels() {
+  await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+  await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
+  console.log("AI Models Loaded");
 }
 
-/* ====== CAPTURE ====== */
+/* ===== BLINK DETECTION ===== */
 
-function capture(type) {
+async function detectBlink() {
 
-  const empId = document.getElementById("empId").value.trim();
-  const empName = document.getElementById("empName").value.trim();
-  const cameraMode = document.getElementById("cameraSelect").value;
+  const detection = await faceapi
+    .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+    .withFaceLandmarks();
 
-  if (!empId || !empName) {
-    alert("กรอกข้อมูลพนักงาน");
+  if (!detection) return;
+
+  const leftEye = detection.landmarks.getLeftEye();
+  const rightEye = detection.landmarks.getRightEye();
+
+  function distance(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
+  function eyeAspectRatio(eye) {
+    const A = distance(eye[1], eye[5]);
+    const B = distance(eye[2], eye[4]);
+    const C = distance(eye[0], eye[3]);
+    return (A + B) / (2.0 * C);
+  }
+
+  const ear = (eyeAspectRatio(leftEye) + eyeAspectRatio(rightEye)) / 2;
+
+  if (ear < 0.20) {
+    blinkDetected = true;
+    statusDiv.innerText = "✅ ตรวจพบการกระพริบตา";
+    statusDiv.style.color = "green";
+  }
+}
+
+/* ===== CAPTURE ===== */
+
+async function capture(type) {
+
+  if (!blinkDetected) {
+    alert("กรุณากระพริบตาก่อนถ่ายภาพ");
     return;
   }
 
-  statusDiv.innerText = "📡 กำลังตรวจสอบ GPS...";
-  statusDiv.style.color = "black";
-
-  navigator.geolocation.getCurrentPosition(pos => {
-
-    const lat = pos.coords.latitude;
-    const lng = pos.coords.longitude;
-
-    const distance = getDistance(lat, lng, OFFICE_LAT, OFFICE_LNG);
-
-    if (distance > ALLOW_RADIUS) {
-      statusDiv.innerText = "❌ อยู่นอกพื้นที่ (" + distance.toFixed(1) + " m)";
-      statusDiv.style.color = "red";
-      return;
-    }
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-
-// วาดภาพก่อน
-ctx.drawImage(video, 0, 0);
-
-const now = new Date();
-
-// จัด format วันเวลา
-const dateStr = now.toLocaleDateString("th-TH");
-const timeStr = now.toLocaleTimeString("th-TH");
-
-// ขนาดฟอนต์ปรับตามความกว้างรูป
-const baseFontSize = Math.floor(canvas.width * 0.04);
-
-ctx.font = `${baseFontSize}px Arial`;
-ctx.lineWidth = 4;
-
-// เตรียมข้อความ
-const lines = [
-  type === "IN" ? "🟢 เข้างาน" : "🔴 ออกงาน",
-  "บริษัท โมลด์เมท จำกัด",
-  `${empId} - ${empName}`,
-  `${dateStr} ${timeStr}`,
-  `ระยะห่าง: ${distance.toFixed(1)} เมตร`,
-  `Lat: ${lat.toFixed(5)}`,
-  `Lng: ${lng.toFixed(5)}`
-];
-
-// คำนวณความสูงกล่อง
-const padding = 20;
-const lineHeight = baseFontSize + 8;
-const boxHeight = lines.length * lineHeight + padding;
-
-// วาดพื้นหลัง
-ctx.fillStyle = "rgba(0,0,0,0.65)";
-ctx.fillRect(
-  0,
-  canvas.height - boxHeight,
-  canvas.width,
-  boxHeight
-);
-
-// วาดข้อความ
-lines.forEach((text, index) => {
-
-  // สีบรรทัดแรกตามประเภท
-  if (index === 0) {
-    ctx.fillStyle = type === "IN" ? "#00ff88" : "#ff4444";
-  } else {
-    ctx.fillStyle = "white";
-  }
-
-  ctx.strokeStyle = "black";
-
-  const y = canvas.height - boxHeight + padding + (index * lineHeight);
-
-  ctx.strokeText(text, 20, y);
-  ctx.fillText(text, 20, y);
-});
-
-    const base64 = canvas.toDataURL("image/jpeg", 0.8).split(',')[1];
-
-    statusDiv.innerText = "⏳ กำลังบันทึก...";
-
-    fetch(YOUR_WEBAPP_URL, {
-      method: "POST",
-      body: JSON.stringify({
-        employee_id: empId,
-        name: empName,
-        type: type,
-        camera: cameraMode === "user" ? "FRONT" : "BACK",
-        latitude: lat,
-        longitude: lng,
-        distance: distance.toFixed(2),
-        image: base64
-      })
-    })
-    .then(r => r.json())
-    .then(res => {
-      statusDiv.innerText = "✅ บันทึกสำเร็จ";
-      statusDiv.style.color = "green";
-    })
-    .catch(err => {
-      statusDiv.innerText = "❌ บันทึกไม่สำเร็จ";
-      statusDiv.style.color = "red";
-    });
-
-  }, () => {
-    statusDiv.innerText = "❌ ระบุตำแหน่งไม่ได้";
-    statusDiv.style.color = "red";
-  }, { enableHighAccuracy: true });
+  // (ส่วน capture เดิมของคุณใส่ต่อจากตรงนี้ได้เลย)
 }
 
-/* ====== START ====== */
+/* ===== START ===== */
 
-initCamera();
+window.addEventListener("load", async () => {
+  await loadModels();
+  await initCamera();
+
+  // ตรวจจับทุก 500ms
+  setInterval(detectBlink, 500);
+});
+
 </script>
+
 </body>
 </html>
