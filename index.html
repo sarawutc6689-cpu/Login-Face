@@ -212,38 +212,62 @@ function capture(type) {
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
 
-// วาดภาพ
+// วาดภาพก่อน
 ctx.drawImage(video, 0, 0);
 
-// เตรียมข้อมูลเวลา
 const now = new Date();
-const dateStr = now.toLocaleDateString();
-const timeStr = now.toLocaleTimeString();
 
-// ตั้งค่าฟอนต์
-ctx.font = "20px Arial";
-ctx.fillStyle = "white";
-ctx.strokeStyle = "black";
-ctx.lineWidth = 3;
+// จัด format วันเวลา
+const dateStr = now.toLocaleDateString("th-TH");
+const timeStr = now.toLocaleTimeString("th-TH");
 
-// ข้อความที่จะแสดง
+// ขนาดฟอนต์ปรับตามความกว้างรูป
+const baseFontSize = Math.floor(canvas.width * 0.04);
+
+ctx.font = `${baseFontSize}px Arial`;
+ctx.lineWidth = 4;
+
+// เตรียมข้อความ
 const lines = [
-  empId,
+  type === "IN" ? "🟢 เข้างาน" : "🔴 ออกงาน",
+  "บริษัทของคุณ",
+  `${empId} - ${empName}`,
   `${dateStr} ${timeStr}`,
+  `ระยะห่าง: ${distance.toFixed(1)} เมตร`,
   `Lat: ${lat.toFixed(5)}`,
   `Lng: ${lng.toFixed(5)}`
 ];
 
-// วาดพื้นหลังทึบเล็กน้อย (อ่านง่าย)
-ctx.fillStyle = "rgba(0,0,0,0.5)";
-ctx.fillRect(10, canvas.height - 110, 350, 100);
+// คำนวณความสูงกล่อง
+const padding = 20;
+const lineHeight = baseFontSize + 8;
+const boxHeight = lines.length * lineHeight + padding;
 
-// เขียนตัวหนังสือ
-ctx.fillStyle = "white";
+// วาดพื้นหลัง
+ctx.fillStyle = "rgba(0,0,0,0.65)";
+ctx.fillRect(
+  0,
+  canvas.height - boxHeight,
+  canvas.width,
+  boxHeight
+);
 
-lines.forEach((text, i) => {
-  ctx.strokeText(text, 20, canvas.height - 80 + (i * 25));
-  ctx.fillText(text, 20, canvas.height - 80 + (i * 25));
+// วาดข้อความ
+lines.forEach((text, index) => {
+
+  // สีบรรทัดแรกตามประเภท
+  if (index === 0) {
+    ctx.fillStyle = type === "IN" ? "#00ff88" : "#ff4444";
+  } else {
+    ctx.fillStyle = "white";
+  }
+
+  ctx.strokeStyle = "black";
+
+  const y = canvas.height - boxHeight + padding + (index * lineHeight);
+
+  ctx.strokeText(text, 20, y);
+  ctx.fillText(text, 20, y);
 });
 
     const base64 = canvas.toDataURL("image/jpeg", 0.8).split(',')[1];
